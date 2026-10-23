@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Weather Ensemble & Risk Advisory | UK & North Sea</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0b0f19;
+      --card-bg: #131b2e;
+      --card-border: #1e293b;
+      --card-hover: #1c2640;
+      --accent-cyan: #06b6d4;
+      --accent-blue: #3b82f6;
+      --accent-red: #ef4444;
+      --accent-orange: #f97316;
+      --accent-amber: #f59e0b;
+      --accent-green: #10b981;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.5;
+      padding: 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding: 18px 24px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .radar-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #0284c7, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+    }
+
+    .title-group h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+
+    .title-group p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+
+    .badge-live {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-live::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 1.8s infinite;
+    }
+
+    .badge-storm {
+      background: rgba(239, 68, 68, 0.15);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+    }
+
+    .btn {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #334155;
+      color: #fff;
+      border-color: #475569;
+    }
+
+    .btn-primary {
+      background: #0284c7;
+      border-color: #0369a1;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #0369a1;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+    }
+
+    .kpi-critical::before { background: var(--accent-red); }
+    .kpi-warning::before { background: var(--accent-amber); }
+    .kpi-info::before { background: var(--accent-cyan); }
+    .kpi-purple::before { background: #8b5cf6; }
+
+    .kpi-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .kpi-value-row {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+
+    .kpi-value {
+      font-size: 1.85rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: #fff;
+    }
+
+    .kpi-sub {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    /* Main Dashboard Grid */
+    .grid-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 1024px) {
+      .grid-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .panel-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+    }
+
+    /* Map container */
+    #map {
+      width: 100%;
+      height: 420px;
+      border-radius: 8px;
+      background: #090d16;
+      border: 1px solid #1e293b;
+      z-index: 1;
+    }
+
+    /* Leaflet Dark Theme Overrides */
+    .leaflet-container {
+      background: #090d16 !important;
+    }
+    .leaflet-control-layers {
+      background: #131b2e !important;
+      border: 1px solid #1e293b !important;
+      color: #e2e8f0 !important;
+      border-radius: 8px !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+      font-family: 'Inter', sans-serif !important;
+      font-size: 0.78rem !important;
+    }
+    .leaflet-control-layers label {
+      color: #cbd5e1 !important;
+      cursor: pointer;
+    }
+    .leaflet-bar a {
+      background-color: #131b2e !important;
+      border-color: #1e293b !important;
+      color: #e2e8f0 !important;
+    }
+    .leaflet-bar a:hover {
+      background-color: #1e293b !important;
+      color: #fff !important;
+    }
+    .leaflet-control-attribution {
+      background: rgba(11, 15, 25, 0.8) !important;
+      color: #64748b !important;
+      font-size: 0.65rem !important;
+    }
+    .leaflet-control-attribution a {
+      color: #38bdf8 !important;
+    }
+    .leaflet-popup-content-wrapper {
+      background: #182239 !important;
+      color: #f8fafc !important;
+      border: 1px solid #24324f !important;
+      border-radius: 8px !important;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
+    }
+    .leaflet-popup-tip {
+      background: #182239 !important;
+    }
+
+    .map-hint {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* Alerts section */
+    .alerts-container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 420px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .alert-card {
+      background: #182239;
+      border: 1px solid #24324f;
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .alert-card:hover {
+      background: #1d2a47;
+      border-color: #3b82f6;
+    }
+
+    .alert-card.critical {
+      border-left: 4px solid var(--accent-red);
+    }
+
+    .alert-card.warning {
+      border-left: 4px solid var(--accent-amber);
+    }
+
+    .alert-card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+    }
+
+    .alert-asset-name {
+      font-weight: 600;
+      color: #fff;
+      font-size: 0.92rem;
+    }
+
+    .alert-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+
+    .tag-critical {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    .tag-warning {
+      background: rgba(245, 158, 11, 0.2);
+      color: #fbbf24;
+    }
+
+    .alert-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .alert-action {
+      font-size: 0.78rem;
+      color: #93c5fd;
+      background: rgba(59, 130, 246, 0.1);
+      padding: 6px 8px;
+      border-radius: 4px;
+      border-left: 2px solid var(--accent-blue);
+    }
+
+    /* Chart section */
+    .chart-panel {
+      grid-column: 1 / -1;
+    }
+
+    .chart-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tab-group {
+      display: flex;
+      gap: 6px;
+      background: #0f172a;
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+    }
+
+    .tab-btn {
+      background: transparent;
+      color: var(--text-muted);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: #0284c7;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .tab-btn:hover:not(.active) {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .location-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #0f172a;
+      border: 1px solid #1e293b;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent-cyan);
+    }
+
+    .chart-container {
+      position: relative;
+      height: 380px;
+      width: 100%;
+    }
+
+    /* Custom form */
+    .coord-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .coord-input {
+      background: #0f172a;
+      border: 1px solid #334155;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      width: 90px;
+    }
+
+    .coord-input:focus {
+      outline: none;
+      border-color: var(--accent-cyan);
+    }
+
+    /* Loading overlay */
+    .loading-spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0b0f19;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #24324f;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="header-left">
+        <div class="radar-icon">🌀</div>
+        <div class="title-group">
+          <h1>AI Weather Ensemble & Risk Advisory</h1>
+          <p>UK & North Sea Basin [49.0°N to 60.0°N, -10.0°W to 2.0°E] • 10-Member Probabilistic Engine</p>
+        </div>
+      </div>
+      <div class="header-right">
+        <span class="badge badge-storm">Storm Antigravity Active</span>
+        <span class="badge badge-live" id="api-status">Connecting...</span>
+        <button class="btn" id="btn-refresh" title="Refresh Live Data">
+          <span>🔄</span> Refresh
+        </button>
+      </div>
+    </header>
+
+    <!-- KPI Summary Grid -->
+    <div class="kpi-grid">
+      <div class="kpi-card kpi-critical">
+        <div class="kpi-label">Marine Breaches (SWH ≥ 5.0m)</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpi-marine-breaches">-</div>
+          <div class="kpi-sub">Assets Exceeding Safe Operating Limit</div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-warning">
+        <div class="kpi-label">Gas Trading Spikes (HDD ≥ 0.30)</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpi-gas-spikes">-</div>
+          <div class="kpi-sub">Cold Surge Heating Demand Risks</div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-info">
+        <div class="kpi-label">Forties Charlie Peak SWH</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpi-forties-peak">-</div>
+          <div class="kpi-sub" id="kpi-forties-p90">P90 Upper Bound</div>
+        </div>
+      </div>
+
+      <div class="kpi-card kpi-purple">
+        <div class="kpi-label">Deepest Central Pressure</div>
+        <div class="kpi-value-row">
+          <div class="kpi-value" id="kpi-min-pressure">967.5 <span style="font-size:1rem">hPa</span></div>
+          <div class="kpi-sub">Explosive Cyclogenesis Bomb</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Section: Map & Alerts -->
+    <div class="grid-layout">
+      <!-- Left Panel: Geospatial Map -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>🗺️</span> North Sea Asset & Storm Map
+          </div>
+          <div class="badge" style="background:#1e293b; color:#94a3b8; font-size:0.75rem;">
+            Click asset or point to query
+          </div>
+        </div>
+        <div id="map"></div>
+        <div class="map-hint">
+          <span>🔴 Critical Risk (SWH ≥ 5m) &nbsp; 🟠 Alert Asset &nbsp; ⚡ Storm Center Track</span>
+          <span id="coords-display">Click anywhere to snap coordinate</span>
+        </div>
+      </div>
+
+      <!-- Right Panel: Active Risk Advisory Alerts -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>⚠️</span> Active Marine & Energy Risk Advisories
+          </div>
+          <div class="badge" id="alert-counter-badge" style="background:rgba(239, 68, 68, 0.2); color:#f87171;">
+            0 Active
+          </div>
+        </div>
+        <div class="alerts-container" id="alerts-list">
+          <div style="text-align:center; padding: 40px; color: var(--text-dim);">
+            <div class="loading-spinner"></div> Loading risk advisories...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Section: 24h Probabilistic Envelope Chart -->
+    <div class="panel chart-panel">
+      <div class="panel-header">
+        <div class="panel-title">
+          <span>📈</span> 24-Hour Probabilistic Ensemble Envelope (P10 - P50 - P90)
+        </div>
+        <div class="coord-form">
+          <label style="font-size:0.78rem; color:var(--text-muted);">Lat:</label>
+          <input type="number" id="input-lat" class="coord-input" step="0.25" value="57.73" />
+          <label style="font-size:0.78rem; color:var(--text-muted);">Lon:</label>
+          <input type="number" id="input-lon" class="coord-input" step="0.25" value="0.90" />
+          <button class="btn btn-primary" id="btn-fetch-coord">Fetch</button>
+        </div>
+      </div>
+
+      <div class="chart-controls">
+        <div class="tab-group" id="var-tabs">
+          <button class="tab-btn active" data-var="wave_height">🌊 Wave Height (SWH)</button>
+          <button class="tab-btn" data-var="wind_speed">💨 10m Wind Speed</button>
+          <button class="tab-btn" data-var="temperature">🌡️ 2m Temperature</button>
+          <button class="tab-btn" data-var="surface_pressure">📉 Surface Pressure</button>
+          <button class="tab-btn" data-var="hdd">🔥 Heating Degree Days</button>
+        </div>
+
+        <div class="location-banner" id="location-banner">
+          📍 Snapped: Lat 57.75°N, Lon 1.00°E (Forties Charlie Platform)
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <canvas id="ensembleChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Configuration & State
+    const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+      ? window.location.origin
+      : 'http://localhost:8000';
+
+    let currentForecast = null;
+    let activeVariable = 'wave_height';
+    let chartInstance = null;
+    let mapInstance = null;
+    let assetMarkers = {};
+    let stormTrackLayer = null;
+
+    const VARIABLE_METADATA = {
+      wave_height: {
+        label: 'Significant Wave Height (SWH)',
+        unit: 'm',
+        color: '#06b6d4',
+        threshold: 5.0,
+        thresholdLabel: 'Critical Marine Threshold (5.0m)',
+      },
+      wind_speed: {
+        label: '10m Wind Speed',
+        unit: 'm/s',
+        color: '#3b82f6',
+        threshold: 25.0,
+        thresholdLabel: 'Turbine Cutoff Threshold (25.0 m/s)',
+      },
+      temperature: {
+        label: '2m Air Temperature',
+        unit: '°C',
+        color: '#10b981',
+        threshold: null,
+      },
+      surface_pressure: {
+        label: 'Surface Pressure',
+        unit: 'hPa',
+        color: '#f59e0b',
+        threshold: 980.0,
+        thresholdLabel: 'Storm Depression Bar (< 980 hPa)',
+      },
+      hdd: {
+        label: 'Heating Degree Days (HDD Rate)',
+        unit: 'HDD',
+        color: '#ec4899',
+        threshold: 0.30,
+        thresholdLabel: 'Gas Trading Demand Spike (0.30)',
+      }
+    };
+
+    // Initialize Map
+    function initMap() {
+      // UK & North Sea center
+      mapInstance = L.map('map', {
+        center: [56.2, -1.5],
+        zoom: 5,
+        zoomControl: true,
+      });
+
+      // 1. Esri World Dark Gray Base & Reference (No API key required)
+      const esriDarkBase = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution: '&copy; Esri, DeLorme, NAVTEQ',
+          maxZoom: 16,
+          minZoom: 3,
+        }
+      );
+
+      const esriDarkRef = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution: '',
+          maxZoom: 16,
+          minZoom: 3,
+        }
+      );
+
+      // Group Base + Labels as default dark canvas
+      const esriDarkGroup = L.layerGroup([esriDarkBase, esriDarkRef]).addTo(mapInstance);
+
+      // 2. OpenStreetMap (Standard free open-source tiles, no API key)
+      const osmStandard = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18,
+      });
+
+      // 3. Esri World Ocean Base (Marine bathymetry, no API key)
+      const esriOcean = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}',
+        {
+          attribution: '&copy; Esri &mdash; GEBCO, NOAA, National Geographic',
+          maxZoom: 13,
+        }
+      );
+
+      // Basemap switcher control
+      const baseMaps = {
+        "🌌 Dark Canvas": esriDarkGroup,
+        "🌊 Ocean Bathymetry": esriOcean,
+        "🗺️ Standard OSM": osmStandard,
+      };
+      L.control.layers(baseMaps, null, { position: 'topright' }).addTo(mapInstance);
+
+      // Domain bounding box [49 to 60 N, -10 to 2 E]
+      const domainBounds = [[49.0, -10.0], [60.0, 2.0]];
+      L.rectangle(domainBounds, {
+        color: '#0284c7',
+        weight: 1.5,
+        dashArray: '4, 6',
+        fill: true,
+        fillColor: '#0284c7',
+        fillOpacity: 0.03,
+      }).addTo(mapInstance);
+
+      // Click on map to fetch forecast
+      mapInstance.on('click', (e) => {
+        const lat = parseFloat(e.latlng.lat.toFixed(2));
+        const lon = parseFloat(e.latlng.lng.toFixed(2));
+        document.getElementById('input-lat').value = lat;
+        document.getElementById('input-lon').value = lon;
+        document.getElementById('coords-display').innerText = `Selected: ${lat}°N, ${lon}°E`;
+        fetchForecast(lat, lon, `Custom Coordinates (${lat}°N, ${lon}°E)`);
+      });
+    }
+
+    // Initialize Chart
+    function initChart() {
+      const ctx = document.getElementById('ensembleChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: Array.from({ length: 25 }, (_, i) => `T+${i}h`),
+          datasets: []
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#cbd5e1',
+                font: { family: 'Inter', size: 12 }
+              }
+            },
+            tooltip: {
+              backgroundColor: '#1e293b',
+              titleColor: '#fff',
+              bodyColor: '#e2e8f0',
+              borderColor: '#334155',
+              borderWidth: 1,
+              padding: 10,
+              bodyFont: { family: 'JetBrains Mono' }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255, 255, 255, 0.06)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } },
+              title: { display: true, text: 'Forecast Horizon (Hours from Run)', color: '#64748b' }
+            },
+            y: {
+              grid: { color: 'rgba(255, 255, 255, 0.06)' },
+              ticks: { color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } },
+            }
+          }
+        }
+      });
+    }
+
+    // Update Chart with current active variable
+    function updateChart() {
+      if (!currentForecast || !chartInstance) return;
+
+      const meta = VARIABLE_METADATA[activeVariable];
+      const series = currentForecast[activeVariable];
+      const hoursLabels = currentForecast.hours.map(h => `T+${h}h`);
+
+      const datasets = [
+        // P90 Bound
+        {
+          label: `P90 Upper Bound (90%)`,
+          data: series.p90,
+          borderColor: meta.color,
+          borderWidth: 1.2,
+          borderDash: [5, 4],
+          backgroundColor: 'transparent',
+          pointRadius: 0,
+          fill: false,
+          tension: 0.35,
+        },
+        // P50 Median (filled down to P10 or confidence band)
+        {
+          label: `P50 Ensemble Median`,
+          data: series.p50,
+          borderColor: meta.color,
+          borderWidth: 2.5,
+          backgroundColor: `${meta.color}20`,
+          pointRadius: 3,
+          pointBackgroundColor: meta.color,
+          fill: '-1', // fill to P90
+          tension: 0.35,
+        },
+        // P10 Bound
+        {
+          label: `P10 Lower Bound (10%)`,
+          data: series.p10,
+          borderColor: meta.color,
+          borderWidth: 1.2,
+          borderDash: [5, 4],
+          backgroundColor: `${meta.color}15`,
+          pointRadius: 0,
+          fill: '-1', // fill between P50 and P10
+          tension: 0.35,
+        }
+      ];
+
+      // Add critical threshold line if defined
+      if (meta.threshold !== null) {
+        datasets.push({
+          label: meta.thresholdLabel,
+          data: Array(25).fill(meta.threshold),
+          borderColor: '#ef4444',
+          borderWidth: 2,
+          borderDash: [6, 4],
+          pointRadius: 0,
+          fill: false,
+        });
+      }
+
+      chartInstance.data.labels = hoursLabels;
+      chartInstance.data.datasets = datasets;
+      chartInstance.options.scales.y.title = {
+        display: true,
+        text: `${meta.label} (${meta.unit})`,
+        color: '#94a3b8'
+      };
+      chartInstance.update();
+    }
+
+    // Fetch Forecast for Lat/Lon
+    async function fetchForecast(lat, lon, label = null) {
+      try {
+        const res = await fetch(`${API_BASE}/api/forecast/ensemble?lat=${lat}&lon=${lon}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        currentForecast = data;
+
+        const locLabel = label || `Lat ${data.snapped_lat}°N, Lon ${data.snapped_lon}°E`;
+        document.getElementById('location-banner').innerHTML = `📍 Snapped: ${locLabel} (Grid index [${data.grid_lat_idx}, ${data.grid_lon_idx}])`;
+        document.getElementById('input-lat').value = data.snapped_lat;
+        document.getElementById('input-lon').value = data.snapped_lon;
+
+        updateChart();
+      } catch (err) {
+        console.error("Forecast fetch error:", err);
+      }
+    }
+
+    // Fetch Alerts & Populate Cards & KPIs
+    async function fetchAlerts() {
+      try {
+        const res = await fetch(`${API_BASE}/api/alerts/marine-energy`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+
+        // Update KPIs
+        const marineCount = data.alerts.filter(a => a.category === 'MARINE_OFFSHORE' && a.severity === 'CRITICAL').length;
+        const gasCount = data.alerts.filter(a => a.category === 'GAS_TRADING').length;
+        
+        document.getElementById('kpi-marine-breaches').innerText = marineCount;
+        document.getElementById('kpi-gas-spikes').innerText = gasCount;
+        document.getElementById('alert-counter-badge').innerText = `${data.total_alerts} Active Alerts`;
+
+        // Check Forties Charlie alert
+        const fortiesAlert = data.alerts.find(a => a.asset_id === 'forties-charlie' && a.category === 'MARINE_OFFSHORE');
+        if (fortiesAlert) {
+          document.getElementById('kpi-forties-peak').innerHTML = `${fortiesAlert.observed_peak_p50.toFixed(1)} <span style="font-size:1rem">m</span>`;
+          document.getElementById('kpi-forties-p90').innerText = `P90 peak: ${fortiesAlert.observed_peak_p90.toFixed(1)}m (Breached)`;
+        }
+
+        // Render Alert Cards
+        const alertsList = document.getElementById('alerts-list');
+        if (data.alerts.length === 0) {
+          alertsList.innerHTML = '<div style="text-align:center; padding: 20px; color: #10b981;">No active threshold breaches.</div>';
+          return;
+        }
+
+        alertsList.innerHTML = data.alerts.map(a => {
+          const isCrit = a.severity === 'CRITICAL';
+          const tagClass = isCrit ? 'tag-critical' : 'tag-warning';
+          const cardClass = isCrit ? 'critical' : 'warning';
+          return `
+            <div class="alert-card ${cardClass}" onclick="selectAsset('${a.asset_id}', ${a.lat}, ${a.lon}, '${a.asset_name}')">
+              <div class="alert-card-top">
+                <span class="alert-asset-name">${a.asset_name}</span>
+                <span class="alert-tag ${tagClass}">${a.severity} • ${a.category.replace('_', ' ')}</span>
+              </div>
+              <div class="alert-desc">${a.message}</div>
+              <div class="alert-action"><strong>Protocol:</strong> ${a.recommended_action}</div>
+            </div>
+          `;
+        }).join('');
+
+      } catch (err) {
+        console.error("Alerts fetch error:", err);
+        document.getElementById('alerts-list').innerHTML = `<div style="color:#ef4444; padding:20px;">Failed to load alerts: ${err.message}</div>`;
+      }
+    }
+
+    // Fetch Assets Catalogue and place on map
+    async function fetchAssets() {
+      try {
+        const res = await fetch(`${API_BASE}/api/assets`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const assets = await res.json();
+
+        assets.forEach(asset => {
+          // Icon color based on asset type
+          const isForties = asset.id === 'forties-charlie';
+          const markerColor = isForties ? '#ef4444' : '#06b6d4';
+
+          const marker = L.circleMarker([asset.lat, asset.lon], {
+            radius: isForties ? 8 : 6,
+            color: markerColor,
+            fillColor: markerColor,
+            fillOpacity: 0.8,
+            weight: 2,
+          }).addTo(mapInstance);
+
+          marker.bindPopup(`
+            <div style="font-family:Inter, sans-serif; font-size:12px; color:#f1f5f9; line-height:1.4;">
+              <strong style="color:#38bdf8; font-size:13px;">${asset.name}</strong><br>
+              <span style="color:#94a3b8;">Type: ${asset.asset_type.replace(/_/g, ' ')}</span><br>
+              <span style="color:#cbd5e1;">Critical SWH: <strong style="color:#f87171;">${asset.critical_swh_threshold}m</strong></span><br>
+              <button style="margin-top:8px; background:#0284c7; color:#fff; border:none; padding:5px 10px; border-radius:5px; cursor:pointer; font-weight:600; width:100%;"
+                onclick="selectAsset('${asset.id}', ${asset.lat}, ${asset.lon}, '${asset.name}')">
+                Load Ensemble Forecast
+              </button>
+            </div>
+          `);
+
+          assetMarkers[asset.id] = marker;
+        });
+      } catch (err) {
+        console.error("Assets fetch error:", err);
+      }
+    }
+
+    // Fetch Storm Track and render polyline on Leaflet
+    async function fetchStormTrack() {
+      try {
+        const res = await fetch(`${API_BASE}/api/storm-track`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const latlngs = data.track.map(t => [t.lat, t.lon]);
+
+        if (stormTrackLayer) mapInstance.removeLayer(stormTrackLayer);
+
+        stormTrackLayer = L.polyline(latlngs, {
+          color: '#f97316',
+          weight: 3,
+          dashArray: '6, 6',
+          opacity: 0.8,
+        }).addTo(mapInstance);
+
+        // Marker at storm peak (hour 18)
+        const peakPoint = data.track[18] || data.track[Math.floor(data.track.length / 2)];
+        if (peakPoint) {
+          L.circleMarker([peakPoint.lat, peakPoint.lon], {
+            radius: 9,
+            color: '#ef4444',
+            fillColor: '#ef4444',
+            fillOpacity: 0.5,
+            weight: 2,
+          }).addTo(mapInstance).bindTooltip(`Storm Eye @ T+18h (${peakPoint.central_pressure_hpa} hPa)`, { permanent: false });
+        }
+      } catch (err) {
+        console.error("Storm track error:", err);
+      }
+    }
+
+    // Asset selection helper
+    function selectAsset(id, lat, lon, name) {
+      document.getElementById('input-lat').value = lat;
+      document.getElementById('input-lon').value = lon;
+      fetchForecast(lat, lon, name);
+      mapInstance.setView([lat, lon], 7);
+      if (assetMarkers[id]) {
+        assetMarkers[id].openPopup();
+      }
+    }
+
+    // Check Service Health
+    async function checkHealth() {
+      const badge = document.getElementById('api-status');
+      try {
+        const res = await fetch(`${API_BASE}/healthz`);
+        if (res.ok) {
+          badge.innerText = 'Engine Online';
+          badge.className = 'badge badge-live';
+        } else {
+          badge.innerText = `API Error ${res.status}`;
+          badge.className = 'badge badge-storm';
+        }
+      } catch (e) {
+        badge.innerText = 'Connecting...';
+        badge.className = 'badge badge-storm';
+      }
+    }
+
+    // Event Listeners & Startup
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      initChart();
+
+      // Variable Tab Buttons
+      document.querySelectorAll('#var-tabs .tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          document.querySelectorAll('#var-tabs .tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          activeVariable = btn.dataset.var;
+          updateChart();
+        });
+      });
+
+      // Fetch custom coordinate button
+      document.getElementById('btn-fetch-coord').addEventListener('click', () => {
+        const lat = parseFloat(document.getElementById('input-lat').value);
+        const lon = parseFloat(document.getElementById('input-lon').value);
+        fetchForecast(lat, lon);
+      });
+
+      // Refresh Button
+      document.getElementById('btn-refresh').addEventListener('click', () => {
+        checkHealth();
+        fetchAlerts();
+        fetchForecast(
+          parseFloat(document.getElementById('input-lat').value),
+          parseFloat(document.getElementById('input-lon').value)
+        );
+      });
+
+      // Initial Data Loads: Default to Forties Charlie (57.73N, 0.90E)
+      checkHealth();
+      fetchAlerts();
+      fetchAssets();
+      fetchStormTrack();
+      fetchForecast(57.73, 0.90, "Forties Charlie Platform");
+    });
+  </script>
+</body>
+</html>
